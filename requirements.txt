@@ -1,4 +1,5 @@
+black
+pre-commit
 click
-flake8
 msgpack
 pandas
