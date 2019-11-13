@@ -22,13 +22,13 @@ def create_at(input_df: pd.DataFrame) -> pd.DataFrame:
     data = []
     i = 0
     for index, player in input_df.iterrows():
-        data.append({'Name': player[NAME], 'Email': player[EMAIL]})
+        data.append({'Name': player[NAME], 'Email': player[EMAIL], 'Attendance': ''})
         i += 1
 
         # create the lines for waitlisted people after
         if i == 16:
             data.append({'Name': '', 'Email': ''})
-            data.append({'Name': 'WAITLIST', 'Email': 'WAITLIST'})
+            data.append({'Name': 'WAITLIST', 'Email': 'WAITLIST', 'Attendance': 'WAITLIST'})
             data.append({'Name': '---------------------',
                          'Email': '---------------------'})
 
