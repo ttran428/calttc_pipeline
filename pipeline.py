@@ -1,45 +1,23 @@
 import click
 import pandas as pd
 
+from programs import advanced_training as at, novice_training as nt, round_robin as rr
+
 # Make sure all global variables match the form.
 SID = "Student ID Number"
 NAME = "Name (First and Last)"
 EMAIL = "Email"
+FIRST_PREF = "Section Preference"
+SECOND_PREF = "Second Choice Section (optional)"
+FOUR = "Friday 4:00 to 5:00 PM"
+FIVE = "Friday 5:00 to 6:00 PM"
+SIX = "Friday 6:00 to 7:00 PM"
+PLAYERS_PER_TIMESLOT = 16
 
 
 def valid_input(input_df: pd.DataFrame) -> bool:
     # Validates input file for all files.
     return SID in input_df and NAME in input_df and EMAIL in input_df
-
-
-def create_nt(input_df: pd.DataFrame) -> pd.DataFrame:
-    # Create novice training dataframe.
-    pass
-
-
-def create_at(input_df: pd.DataFrame) -> pd.DataFrame:
-    # Create advanced training dataframe.
-    data = []
-    i = 0
-    for index, player in input_df.iterrows():
-        data.append({"Name": player[NAME], "Email": player[EMAIL]})
-        i += 1
-
-        # create the lines for waitlisted people after
-        if i == 16:
-            data.append({"Name": "", "Email": ""})
-            data.append({"Name": "WAITLIST", "Email": "WAITLIST"})
-            data.append(
-                {"Name": "---------------------", "Email": "---------------------"}
-            )
-
-    output_df = pd.DataFrame(data)
-    return output_df
-
-
-def create_rr(input_df: pd.DataFrame) -> pd.DataFrame:
-    # Create round robin dataframe.
-    pass
 
 
 @click.command()
@@ -64,11 +42,11 @@ def main(form: str, input: str, output: str):
 
     # creates the desired file
     if form == "nt":
-        output_df = create_nt(input_df)
+        output_df = nt.create_nt(input_df)
     elif form == "at":
-        output_df = create_at(input_df)
+        output_df = at.create_at(input_df)
     elif form == "rr":
-        output_df = create_rr(input_df)
+        output_df = rr.create_rr(input_df)
     else:
         raise ValueError(
             "Please check type again. Options for form are: "

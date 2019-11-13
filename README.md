@@ -13,15 +13,15 @@ Cal Table Tennis automated pipeline for signups.
 2) Move the file into `calttc_pipeline/inputs/`
 3) Run:
     `python pipeline.py --form=form --input=input_filename --output=output_filename`
-4) The form options are: 'nt', 'at', 'rr'. 
+4) The form options are: 'nt', 'at', 'rr'.
 5) Your file should appear in `calttc_pipeline/outputs/` under the output name.
 6) Go to Google Sheets and import the csv!
 
 For example, let's say you are making the advanced training list and it is called `at_week9_input.csv`.
 You want it to show up as `at_week9_output.csv`. Therefore the command you would type is:
     `python pipeline.py --form=at --input=at_week9_input.csv --output=at_week9_output.csv`
-    
+
 Notes:
 - Make sure you remember it's in CSV form and that '.csv'
-- Run flake8 before you push
+- I believe you have to keep adding and committing until Black passes.
 - Do not commit real input files with people's real SIDs.
