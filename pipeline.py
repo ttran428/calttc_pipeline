@@ -1,7 +1,7 @@
 import click
 import pandas as pd
 
-from programs import advanced_training as at, novice_training as nt, round_robin as rr
+from programs import advanced_training as at, round_robin as rr, novice_training2 as nt2
 
 # Make sure all global variables match the form.
 SID = "Student ID Number"
@@ -42,7 +42,7 @@ def main(form: str, input: str, output: str):
 
     # creates the desired file
     if form == "nt":
-        output_df = nt.create_nt(input_df)
+        output_df = nt2.create_nt(input_df)
     elif form == "at":
         output_df = at.create_at(input_df)
     elif form == "rr":
