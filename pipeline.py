@@ -4,7 +4,7 @@ import pandas as pd
 from programs import advanced_training as at, round_robin as rr, novice_training2 as nt2
 
 # Make sure all global variables match the form.
-SID = "Student ID Number"
+SID = "Student ID"
 NAME = "Name (First and Last)"
 EMAIL = "Email"
 FIRST_PREF = "Section Preference"

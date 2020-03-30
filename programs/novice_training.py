@@ -1,170 +1,141 @@
 import pandas as pd
+import math
 from typing import List, Dict, Tuple, Set
 
-SID = "Student ID Number"
+SID = "Student ID"
 NAME = "Name (First and Last)"
 EMAIL = "Email"
-FIRST_PREF = "Section Preference"
-SECOND_PREF = "Second Choice Section (optional)"
-LEVEL = "Player Level"
+FIRST_PREF = "Preferred Session"
+SECOND_PREF = "Second Choice Session"
+LEVEL = "Player Level (B, I, A)"
+
 NAME = "Name (First and Last)"
-FOUR = "Friday 4:00 to 5:00 PM"
-FIVE = "Friday 5:00 to 6:00 PM"
-SIX = "Friday 6:00 to 7:00 PM"
-PLAYERS_PER_TIMESLOT = 16
-WAITLIST_PER_TIMESLOT = 3
+FOUR = "4-5 PM"
+FIVE = "5-6 PM"
+SIX = "6-7 PM"
+PLAYERS_PER_TIMESLOT = 20
+NUM_SESSIONS = 3
 
 
-class Player:
-	SID = ""
-	email = ""
-	level = ""
-
-	def __init__(self, name, SID, email, level):
-		self.name = name
-		self.SID = SID
-		self.email = email
-		self.level = level
-
-	def __repr__(self):
-		return f'SID: {self.SID}, EMAIL: {self.email}'
-
-
-def add_player_to_possible_timeslots(
-	p: Player, time: str, four: List[Player], five: List[Player], six: List[Player]
-) -> Tuple[List, List, List]:
+def add_players(players: pd.DataFrame, sessions: Dict, added: Set) -> Dict:
 	"""
-	Helper method to add player P with preference TIME to the list of players who can play at time TIME
+	Adds players to session dictionary.
 
-	:param p: Player that is to be added to a time slot
-	:param time: Time slot that the player has submitted a preference for
-	:param four: List of players who can play at 4pm, not including player p
-	:param five: List of players who can play at 5pm, not including player p
-	:param six: List of players who can play at 6pm, not including player p
-	:return: Tuple of list of players who are available to play at 4pm, 5pm and 6pm respectively
+	Parameters
+	------
+	players: pd.DataFrame
+		Input from create_nt spliced
+	sessions: Dict
+		Contains each session with players put into it
+	added: Set
+		Contains SID of players already added
+
+	Returns
+	-------
+	sessions: Dict
+		contains each session with players put into it
+
 	"""
-	four_copy = four.copy()
-	five_copy = five.copy()
-	six_copy = six.copy()
-	if time == FOUR:
-		four_copy.append(p)
-	if time == FIVE:
-		five_copy.append(p)
-	if time == SIX:
-		six_copy.append(p)
-	return four_copy, five_copy, six_copy
+	for index, player in players.iterrows():
+		first_session = sessions[player[FIRST_PREF]]
+		second_session = sessions[player[SECOND_PREF]] if isinstance(player[SECOND_PREF], str) else sessions[player[FIRST_PREF]]
+
+		if player[SID] in added:
+			continue
+		elif len(first_session) < PLAYERS_PER_TIMESLOT:
+			first_session.append(player)
+		elif len(second_session) < PLAYERS_PER_TIMESLOT:
+			second_session.append(player)
+		else:
+			if len(first_session) <= len(second_session):
+				first_session.append(player)
+			else:
+				second_session.append(player)
+		added.add(player[SID])
+	return sessions
 
 
-def get_all_players_for_timeslot(seen: Set[Player], possible_players: List[Player], curr_players: List[Player],
-								 num_players: int) -> \
-	Tuple[Set, List]:
+def sessions_to_df(sessions: Dict) -> pd.DataFrame:
 	"""
-	Helper method to assign the first PLAYER_PER_TIMESLOT players to sign up for a given time (who have not already
-	been assigned a timeslot) to that timeslot. This method does not care about whether players put the a timeslot as
-	their first or second preference.
+	Parameters
+	----------
+	sessions: Dict
+		Contains each session with players put into it
 
-	:param seen: Set of players that have already been assigned a timeslot and thus cannot be assigned again
-	:param possible_players: List of players who have signed up for this time slot as a possible preference
-	:param curr_players: List of players who are currently signed up for this time already (to be added to for waitlist)
-	:param num_players: Number of players to be added for the timeslot
-	:return: Tuple of set of players who have been assigned a timeslot (either previously or into this timeslot) and
-		list of players to play in this timeslot
+	Returns
+	-------
+	output_df: pd.DataFrame
+		converted sessions to dataframe
 	"""
+	output_df = pd.DataFrame(columns=[FOUR, "4:Level", "4:Email", "4:Attendance",
+	                                  FIVE, "5:Level", "5:Email", "5:Attendance",
+	                                  SIX, "6:Level", "6:Email", "6:Attendance"])
+	four = sessions[FOUR]
+	five = sessions[FIVE]
+	six = sessions[SIX]
+
 	count = 0
-	players = curr_players.copy()
-	seen_set = seen.copy()
-	while count < num_players and count < len(possible_players):
-		player = possible_players[count]
-		if player not in seen_set:
-			seen_set.add(player)
-			players.append(player)
+	while four or five or six:
+		if count == PLAYERS_PER_TIMESLOT:
+			output_df = output_df.append({FOUR: "----------------------", FIVE: "----------------------", SIX: "----------------------"}, ignore_index=True)
+			output_df = output_df.append({FOUR: "WAITLIST", FIVE: "WAITLIST", SIX: "WAITLIST"}, ignore_index=True)
+			output_df = output_df.append({FOUR: "----------------------", FIVE: "----------------------", SIX: "----------------------"}, ignore_index=True)
+
+		row = {}
+		p1 = four.pop(0) if four else None
+		p2 = five.pop(0) if five else None
+		p3 = six.pop(0) if six else None
+
+		if p1 is not None:
+			row[FOUR] = p1[NAME]
+			row["4:Level"] = p1[LEVEL]
+			row["4:Email"] = p1[EMAIL]
+
+		if p2 is not None:
+			row[FIVE] = p2[NAME]
+			row["5:Level"] = p2[LEVEL]
+			row["5:Email"] = p2[EMAIL]
+
+		if p3 is not None:
+			row[SIX] = p3[NAME]
+			row["6:Level"] = p3[LEVEL]
+			row["6:Email"] = p3[EMAIL]
+
+		output_df = output_df.append(row, ignore_index=True)
 		count += 1
-	return seen_set, players
 
+	return output_df
 
-def populate_time(df: pd.DataFrame, players: List[Player], time: str) -> pd.DataFrame:
-	"""
-	Helper method to populate the player name, level, and email for a given time slot in the dataframe.
-
-	:param df: Dataframe that should contain all the player info for previous time slots
-	:param players: List of players for the specified time slot
-	:param time: Time slot that we are currently populating
-	:return: Dataframe with updated player info to also contain the current time slot.
-	"""
-	curr_df = pd.DataFrame()
-	curr_df.insert(curr_df.shape[1], time, [p.name for p in players], True)
-	curr_df.insert(curr_df.shape[1], "Level (B, I, A)", [p.level for p in players], True)
-	curr_df.insert(curr_df.shape[1], "Email", [p.email for p in players], True)
-	return pd.concat([df, curr_df], axis=1)
 
 
 def create_nt(input_df: pd.DataFrame) -> pd.DataFrame:
 	"""
-	Greedy algorithm to try to assign as many players as possible into a timeslot they are okay with by:
-	1. For each time slot, find all the players who can possibly play then
-	2. Actually assign players into a time slot, filling up time slots with less possible players first
+	Takes (Players_Per_Timeslot x  num_sessions) amount of players and then puts them into their first preference.
+	If a player is above Players_Per_Timeslot, then put player into second choice. If still waitlisted, put into
+	whichever choice has less waitlisted people.
 
-	:param input_df: Novice training signup CSV parsed into a pandas dataframe
-	:return: Novice training timing assignments parsed into a dataframe
+	After, put everyone else in based on if there are free spots, or whichever preference has less waitlisted people.
+
+	Parameters
+	------
+	input_df: pd.DataFrame
+		Novice training signup CSV parsed into a pandas dataframe
+
+	Returns
+	-------
+	output_df: pd.DataFrame
+		Novice training timing assignments parsed into a dataframe
 	"""
-	# Create novice training dataframe.
-	possible_players_four = []
-	possible_players_five = []
-	possible_players_six = []
-	# Add player to the set of the of times that they can play in
-	for index, player in input_df.iterrows():
-		possible_players_four, possible_players_five, possible_players_six \
-			= add_player_to_possible_timeslots(Player(player[NAME], player[SID], player[EMAIL], player[LEVEL]), player[FIRST_PREF],
-											   possible_players_four, possible_players_five, possible_players_six)
 
-		# If they signed up with a second prefernce, also add them to the list of players for the second time preference
-		if player[SECOND_PREF]:
-			possible_players_four, possible_players_five, possible_players_six \
-				= add_player_to_possible_timeslots(Player(player[NAME], player[SID], player[EMAIL], player[LEVEL]), player[SECOND_PREF],
-												   possible_players_four, possible_players_five, possible_players_six)
+	earliest_signups = input_df.iloc[:PLAYERS_PER_TIMESLOT * NUM_SESSIONS]
+	later_signups = input_df.iloc[PLAYERS_PER_TIMESLOT * NUM_SESSIONS:]
 
-	seen = set()
-	output = dict()
-	# Fill up the time slots with the least number of players who can play in that slot first
-	if len(possible_players_four) <= len(possible_players_five) and len(
-		possible_players_four
-	) <= len(possible_players_six):
-		seen, four = get_all_players_for_timeslot(seen, possible_players_four, [], PLAYERS_PER_TIMESLOT)
-		if len(possible_players_five) <= len(possible_players_six):
-			seen, five = get_all_players_for_timeslot(seen, possible_players_five, [], PLAYERS_PER_TIMESLOT)
-			seen, six = get_all_players_for_timeslot(seen, possible_players_six, [], PLAYERS_PER_TIMESLOT)
-		else:
-			seen, six = get_all_players_for_timeslot(seen, possible_players_six, [], PLAYERS_PER_TIMESLOT)
-			seen, five = get_all_players_for_timeslot(seen, possible_players_five, [], PLAYERS_PER_TIMESLOT)
-	elif len(possible_players_five) <= len(possible_players_four) and len(
-		possible_players_five
-	) <= len(possible_players_six):
-		seen, five = get_all_players_for_timeslot(seen, possible_players_five, [], PLAYERS_PER_TIMESLOT)
-		if len(possible_players_four) <= len(possible_players_six):
-			seen, four = get_all_players_for_timeslot(seen, possible_players_four, [], PLAYERS_PER_TIMESLOT)
-			seen, six = get_all_players_for_timeslot(seen, possible_players_six, [], PLAYERS_PER_TIMESLOT)
-		else:
-			seen, six = get_all_players_for_timeslot(seen, possible_players_six, [], PLAYERS_PER_TIMESLOT)
-			seen, four = get_all_players_for_timeslot(seen, possible_players_four, [], PLAYERS_PER_TIMESLOT)
-	else:
-		seen, six = get_all_players_for_timeslot(seen, possible_players_six, [], PLAYERS_PER_TIMESLOT)
-		if len(possible_players_four) <= len(possible_players_five):
-			seen, four = get_all_players_for_timeslot(seen, possible_players_four, [], PLAYERS_PER_TIMESLOT)
-			seen, five = get_all_players_for_timeslot(seen, possible_players_five, [], PLAYERS_PER_TIMESLOT)
-		else:
-			seen, five = get_all_players_for_timeslot(seen, possible_players_five, [], PLAYERS_PER_TIMESLOT)
-			seen, four = get_all_players_for_timeslot(seen, possible_players_four, [], PLAYERS_PER_TIMESLOT)
+	added = set() # checks if player has filled out form multiple times
+	sessions = {FOUR: [], FIVE: [], SIX: []}
 
-	# Add the waitlist for each time slot
-	four.append(Player("---", "---", "---", "---"))
-	five.append(Player("---", "---", "---", "---"))
-	six.append(Player("---", "---", "---", "---"))
-	seen, four = get_all_players_for_timeslot(seen, possible_players_four, four, WAITLIST_PER_TIMESLOT)
-	seen, five = get_all_players_for_timeslot(seen, possible_players_five, five, WAITLIST_PER_TIMESLOT)
-	seen, six = get_all_players_for_timeslot(seen, possible_players_six, six, WAITLIST_PER_TIMESLOT)
+	add_players(earliest_signups, sessions, added)
+	add_players(later_signups, sessions, added)
 
-	df = pd.DataFrame()
-	df = populate_time(df, four, "4 - 5 PM")
-	df = populate_time(df, five, "5 - 6 PM")
-	df = populate_time(df, six, "6 - 7 PM")
-	return df
+	output_df = sessions_to_df(sessions)
+
+	return output_df
