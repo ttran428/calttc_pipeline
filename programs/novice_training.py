@@ -1,6 +1,5 @@
 import pandas as pd
-import math
-from typing import List, Dict, Tuple, Set
+from typing import List, Dict,  Set
 
 SID = "Student ID"
 NAME = "Name (First and Last)"
@@ -14,6 +13,55 @@ FIVE = "5-6 PM"
 SIX = "6-7 PM"
 PLAYERS_PER_TIMESLOT = 20
 NUM_SESSIONS = 3
+
+
+# If it doesn't work, first try setting optimized to False. This deactivates rebalancing.
+OPTIMIZED = True
+
+def rebalance(player, first_session, second_session, sessions) -> bool:
+	"""
+	We see if we can switch any players in the two sessions to their second choice to
+	accommodate to put the player into a spot and not be waitlisted.
+	Parameters
+	----------
+	player: pd.Series
+		player info given from row in dataframe
+	first_session: List
+		list of all players signed up for player's first preference section
+	second_session: List
+		list of all players signed up for player's second preference section
+	sessions: Dict
+		maps time slots to session signups
+
+	Returns
+	-------
+	bool: whether or not it was possible to rebalance (to add the player w/o being waitlisted)
+	"""
+	def rebalance_session(session):
+		for i in range(PLAYERS_PER_TIMESLOT - 1, -1, -1):
+			other_player = session[i]
+			other_second_session = sessions[other_player[SECOND_PREF]]\
+				if isinstance(other_player[SECOND_PREF], str) else sessions[other_player[FIRST_PREF]]
+
+			# We have already moved the other player to their second preference, so
+			# we can't move them somewhere more optimal.
+			if player[FIRST_PREF] == other_player[SECOND_PREF]:
+				continue
+			# If we can move other_player to second preference, we do it.
+			# The reason we are moving an earlier signed up player is because
+			# we have already considered moving the later signed up player and they
+			# don't fit anywhere (in add_players).
+			elif len(other_second_session) < PLAYERS_PER_TIMESLOT:
+				session.pop(i)
+				other_second_session.append(other_player)
+				session.append(player)
+				return True
+		return False
+
+	if not OPTIMIZED:
+		return False
+
+	return rebalance_session(first_session) or rebalance_session(second_session)
 
 
 def add_players(players: pd.DataFrame, sessions: Dict, added: Set) -> Dict:
@@ -37,7 +85,7 @@ def add_players(players: pd.DataFrame, sessions: Dict, added: Set) -> Dict:
 	"""
 	for index, player in players.iterrows():
 		first_session = sessions[player[FIRST_PREF]]
-		second_session = sessions[player[SECOND_PREF]] if isinstance(player[SECOND_PREF], str) else sessions[player[FIRST_PREF]]
+		second_session = sessions[player[SECOND_PREF]] if isinstance(player[SECOND_PREF], str) else first_session
 
 		if player[SID] in added:
 			continue
@@ -46,10 +94,11 @@ def add_players(players: pd.DataFrame, sessions: Dict, added: Set) -> Dict:
 		elif len(second_session) < PLAYERS_PER_TIMESLOT:
 			second_session.append(player)
 		else:
-			if len(first_session) <= len(second_session):
-				first_session.append(player)
-			else:
-				second_session.append(player)
+			if not rebalance(player, first_session, second_session, sessions):
+				if len(first_session) <= len(second_session):
+					first_session.append(player)
+				else:
+					second_session.append(player)
 		added.add(player[SID])
 	return sessions
 
@@ -110,8 +159,12 @@ def sessions_to_df(sessions: Dict) -> pd.DataFrame:
 def create_nt(input_df: pd.DataFrame) -> pd.DataFrame:
 	"""
 	Takes (Players_Per_Timeslot x  num_sessions) amount of players and then puts them into their first preference.
-	If a player is above Players_Per_Timeslot, then put player into second choice. If still waitlisted, put into
+	If a player is above Players_Per_Timeslot, then put player into second choice.
+
+	If a player is waitlisted in both slots, go up the list in reverse to see if there is a way to move a player
+	into their second choice without waitlisting that player. If still waitlisted no matter what, put into
 	whichever choice has less waitlisted people.
+
 
 	After, put everyone else in based on if there are free spots, or whichever preference has less waitlisted people.
 
