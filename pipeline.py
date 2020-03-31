@@ -1,61 +1,65 @@
 import click
 import pandas as pd
 
-from programs import advanced_training as at, round_robin as rr, novice_training2 as nt2
+from programs import novice_training as nt, donuts as donuts
 
 # Make sure all global variables match the form.
 SID = "Student ID"
 NAME = "Name (First and Last)"
 EMAIL = "Email"
-FIRST_PREF = "Section Preference"
-SECOND_PREF = "Second Choice Section (optional)"
-FOUR = "Friday 4:00 to 5:00 PM"
-FIVE = "Friday 5:00 to 6:00 PM"
-SIX = "Friday 6:00 to 7:00 PM"
-PLAYERS_PER_TIMESLOT = 16
 
 
-def valid_input(input_df: pd.DataFrame) -> bool:
-    # Validates input file for all files.
-    return SID in input_df and NAME in input_df and EMAIL in input_df
+def create_training_df(input: str) -> pd.DataFrame:
+    input_df = pd.read_csv(f"./inputs/{input}")
+    # Validate input file that it has the required fields
+    if not SID in input_df or not NAME in input_df or not EMAIL in input_df:
+        raise ValueError("Make sure form has fields: SID, Name, and Email formatted correctly.")
+    return input_df
+
+def create_donut_df(input: str) -> pd.DataFrame:
+    input_df = pd.read_csv(f"./inputs/{input}")
+    if not "OFFICERS" in input_df or not "GENERAL" in input_df:
+        raise ValueError("Make sure csv has two columns: 'OFFICERS' and 'GENERAL'")
+    return input_df
 
 
 @click.command()
-@click.option(
-    "--form",
-    default="nt",
-    help="nt=Novice Training, at=Advanced training, rr=Round Robin",
-)
-@click.option("--input", default="test_form", help="the filepath to the csv input file")
-@click.option(
-    "--output", default="test_form", help="the filepath to the csv output file"
-)
+@click.option("--form", default="nt", help="nt=Novice Training, at=Advanced training, rr=Round Robin",)
+@click.option("--input", default="test_form", help="the filepath to the input file")
+@click.option( "--output", default="test_form", help="the filepath to the output file")
 def main(form: str, input: str, output: str):
 
-    input_df = pd.read_csv(f"./inputs/{input}")
+    if form == "donut_semester":
+        input_df = create_donut_df(input)
+        groups = donuts.create_donuts(input_df, True)
+        output_txt = open(f"outputs/{output}", "w")
+        output_txt.write(groups)
+        output_txt.close()
+    elif form == "donut_weekly":
+        input_df = create_donut_df(input)
+        groups = donuts.create_donuts(input_df, False)
+        output_txt = open(f"outputs/{output}", "w")
+        output_txt.write(groups)
+        output_txt.close()
 
-    # Validate input file that it has the required fields
-    if not valid_input(input_df):
-        raise ValueError(
-            "Make sure form has fields: " "SID, Name, and Email formatted correctly."
-        )
-
-    # creates the desired file
-    if form == "nt":
-        output_df = nt2.create_nt(input_df)
+    elif form == "nt":
+        input_df = create_training_df(input)
+        output_df = nt.create_nt(input_df)
+        output_df.to_csv(f"outputs/{output}", index=False, mode="w+")
     elif form == "at":
-        output_df = at.create_at(input_df)
+        input_df = create_training_df(input)
+        output_df = nt.create_nt(input_df)
+        output_df.to_csv(f"outputs/{output}", index=False, mode="w+")
     elif form == "rr":
-        output_df = rr.create_rr(input_df)
+        input_df = create_training_df(input)
+        output_df = nt.create_nt(input_df)
+        output_df.to_csv(f"outputs/{output}", index=False, mode="w+")
     else:
         raise ValueError(
             "Please check type again. Options for form are: "
-            "nt, at, rr. Otherwise not implemented."
+            "nt, at, rr, donut_semester, donut_weekly. Otherwise not implemented."
         )
 
-    # index=False means you don't write indices of row
-    # w+ allows you to create file before writing if it doesn't exist
-    output_df.to_csv(f"outputs/{output}", index=False, mode="w+")
     print("pipeline worked!")
 
 

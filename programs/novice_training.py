@@ -9,7 +9,6 @@ FIRST_PREF = "Preferred Session"
 SECOND_PREF = "Second Choice Session"
 LEVEL = "Player Level (B, I, A)"
 
-NAME = "Name (First and Last)"
 FOUR = "4-5 PM"
 FIVE = "5-6 PM"
 SIX = "6-7 PM"
